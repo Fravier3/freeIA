@@ -3,12 +3,12 @@
    FreeIA – chat con IA gratis (sin compilación, sin servidor propio)
    ===================================================================== */
 
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.5.0';
 
 /* ---------- Constantes ---------- */
 const STORE_CHATS = 'freeia.chats.v1';
 const STORE_SETTINGS = 'freeia.settings.v1';
-const STORE_MODELS = 'freeia.models.v1';
+const STORE_MODELS = 'freeia.models.v2';
 const MODELS_TTL = 6 * 60 * 60 * 1000;
 const MAX_COMPARE = 3;
 const MAX_FILE_CHARS = 120000;
@@ -17,6 +17,8 @@ const MAX_HISTORY_CHARS = 60000;
 
 // Función de Supabase que guarda la clave de OpenRouter (solo modelos :free)
 const PROXY_URL = 'https://syyealdlapxmpeccaary.supabase.co/functions/v1/freeia-chat';
+
+const GEMINI_URL = 'https://syyealdlapxmpeccaary.supabase.co/functions/v1/freeia-gemini';
 
 const PROVIDERS = {
   pollinations: {
@@ -35,6 +37,14 @@ const PROVIDERS = {
     modelsUrl: 'https://openrouter.ai/api/v1/models',
     needsKey: true,
     fallback: [],
+  },
+  gemini: {
+    name: 'Google Gemini',
+    note: 'Gratis · límite diario',
+    chatUrl: GEMINI_URL,
+    modelsUrl: GEMINI_URL,
+    needsKey: false,
+    fallback: ['gemini-2.5-flash', 'gemini-2.5-flash-lite'],
   },
 };
 
@@ -171,7 +181,9 @@ const prettify = (id) => id.replace(/^.*\//, '').replace(/:free$/, '').replace(/
 
 async function fetchProviderModels(provider) {
   const cfg = PROVIDERS[provider];
-  const res = await fetch(cfg.modelsUrl, { headers: { Accept: 'application/json' } });
+  const res = provider === 'gemini'
+    ? await fetch(cfg.modelsUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'models' }) })
+    : await fetch(cfg.modelsUrl, { headers: { Accept: 'application/json' } });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = await res.json();
   const raw = Array.isArray(json) ? json : json.data || [];
@@ -529,7 +541,7 @@ const providerReady = (model) => !PROVIDERS[model.provider].needsKey || !!settin
 
 function authHeaders(model) {
   const h = { 'Content-Type': 'application/json' };
-  if (usesProxy(model)) return h;
+  if (usesProxy(model) || model.provider === 'gemini') return h;
   if (model.provider === 'openrouter') { h.Authorization = `Bearer ${settings.orKey}`; h['X-Title'] = 'FreeIA'; }
   else if (settings.polKey) h.Authorization = `Bearer ${settings.polKey}`;
   return h;
