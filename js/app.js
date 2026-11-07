@@ -3,7 +3,7 @@
    FreeIA – chat con IA gratis (sin compilación, sin servidor propio)
    ===================================================================== */
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 
 /* ---------- Constantes ---------- */
 const STORE_CHATS = 'freeia.chats.v1';
@@ -675,13 +675,36 @@ function renderAttachments() {
   });
 }
 
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const el = document.createElement('script');
+    el.src = src; el.onload = resolve; el.onerror = () => reject(new Error('No se pudo cargar ' + src));
+    document.head.appendChild(el);
+  });
+}
+
+async function pdfToText(file) {
+  if (!window.pdfjsLib) await loadScript('libs/pdf.min.js');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'libs/pdf.worker.min.js';
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  let out = '';
+  for (let i = 1; i <= pdf.numPages && out.length < MAX_FILE_CHARS; i++) {
+    const page = await (await pdf.getPage(i)).getTextContent();
+    out += `\n--- Página ${i} ---\n` + page.items.map((it) => it.str).join(' ');
+  }
+  return out.trim();
+}
+
 async function onFiles(files) {
   for (const f of files) {
     if (state.attachments.length >= MAX_FILES) { toast(`Máximo ${MAX_FILES} archivos`); break; }
-    if (f.size > 2 * 1024 * 1024) { toast(`"${f.name}" es demasiado grande (máx. 2 MB)`); continue; }
+    const isPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+    if (f.size > (isPdf ? 15 : 2) * 1024 * 1024) { toast(`"${f.name}" es demasiado grande (máx. ${isPdf ? 15 : 2} MB)`); continue; }
     try {
-      let text = await f.text();
-      if (text.includes('\u0000')) { toast(`"${f.name}" no es un archivo de texto`); continue; }
+      if (isPdf) toast(`Leyendo "${f.name}"…`, 4000);
+      let text = isPdf ? await pdfToText(f) : await f.text();
+      if (isPdf && !text.replace(/--- Página \d+ ---/g, '').trim()) { toast(`"${f.name}" no tiene texto (¿es un escaneo?)`); continue; }
+      if (!isPdf && text.includes('\u0000')) { toast(`"${f.name}" no es un archivo de texto`); continue; }
       if (text.length > MAX_FILE_CHARS) { text = text.slice(0, MAX_FILE_CHARS); toast(`"${f.name}" se recortó a ${MAX_FILE_CHARS / 1000}k caracteres`); }
       state.attachments.push({ name: f.name, text });
     } catch { toast(`No se pudo leer "${f.name}"`); }

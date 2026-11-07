@@ -1,5 +1,5 @@
 /* FreeIA service worker – precache + auto-actualización */
-const CACHE = 'freeia-v1.0.0';
+const CACHE = 'freeia-v1.1.0';
 const PRECACHE = [
   './',
   './index.html',
@@ -8,6 +8,8 @@ const PRECACHE = [
   './js/app.js',
   './libs/marked.min.js',
   './libs/purify.min.js',
+  './libs/pdf.min.js',
+  './libs/pdf.worker.min.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
