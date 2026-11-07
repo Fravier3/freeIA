@@ -33,6 +33,8 @@
     <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></symbol>
     <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
+    <symbol id="i-at" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></symbol>
     <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></symbol>
   </defs>
 </svg>
@@ -73,6 +75,13 @@
     </main>
 
     <footer class="composer">
+      <div class="skills-menu" id="skills-menu" hidden role="listbox" aria-label="Plantillas"></div>
+      <div class="img-opts" id="img-opts" hidden>
+        <label>Modelo <select id="img-model" aria-label="Modelo de imagen"></select></label>
+        <label>Formato <select id="img-size" aria-label="Formato de imagen">
+          <option value="1024x1024">Cuadrada</option><option value="768x1344">Vertical</option><option value="1344x768">Horizontal</option>
+        </select></label>
+      </div>
       <div class="attachments" id="attachments"></div>
       <div class="box">
         <textarea id="input" rows="1" placeholder="Escribe tu mensaje…" aria-label="Mensaje" enterkeyhint="send"></textarea>
@@ -84,6 +93,8 @@
             <button class="mode" data-mode="image" role="tab">Imagen</button>
           </div>
           <span class="spacer"></span>
+          <button class="icon-btn tog" id="btn-web" aria-label="Búsqueda web" aria-pressed="false"><svg class="ic"><use href="#i-globe"/></svg></button>
+          <button class="icon-btn" id="btn-skills" aria-label="Plantillas"><svg class="ic"><use href="#i-at"/></svg></button>
           <button class="icon-btn" id="btn-attach" aria-label="Adjuntar PDF o archivo de texto"><svg class="ic"><use href="#i-clip"/></svg></button>
           <button class="send" id="btn-send" aria-label="Enviar"><svg class="ic"><use href="#i-send"/></svg></button>
         </div>
@@ -131,6 +142,10 @@
       <div class="btn-row">
         <button class="btn primary" id="btn-save-set">Guardar y recargar modelos</button>
       </div>
+
+      <h3>Respuestas</h3>
+      <label class="switch-row"><span>Modelo automático de respaldo <small>(si uno falla, prueba otro)</small></span>
+        <input type="checkbox" id="set-fallback"><span class="switch"></span></label>
 
       <h3>Datos</h3>
       <div class="btn-row">

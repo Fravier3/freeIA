@@ -3,7 +3,7 @@
    FreeIA – chat con IA gratis (sin compilación, sin servidor propio)
    ===================================================================== */
 
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 
 /* ---------- Constantes ---------- */
 const STORE_CHATS = 'freeia.chats.v1';
@@ -43,6 +43,17 @@ const SYSTEM_PROMPTS = {
 
 const SUGGESTION_MODES = { chat: 'Escribe tu mensaje…', write: 'Qué quieres redactar…', research: 'Qué quieres investigar…', image: 'Describe la imagen que quieres crear…' };
 
+const SKILLS = [
+  { name: 'Resumir', hint: 'Puntos clave de un texto', text: 'Resume en 5 puntos clave el siguiente texto:\n\n', mode: 'chat' },
+  { name: 'Traducir', hint: 'A otro idioma', text: 'Traduce al inglés el siguiente texto, manteniendo el tono:\n\n', mode: 'chat' },
+  { name: 'Corregir', hint: 'Ortografía y estilo', text: 'Corrige la ortografía y mejora el estilo de este texto sin cambiar su significado:\n\n', mode: 'write' },
+  { name: 'Correo', hint: 'Redactar un email', text: 'Redacta un correo profesional sobre lo siguiente:\n\n', mode: 'write' },
+  { name: 'Código', hint: 'Escribir o arreglar código', text: 'Escribe o corrige este código. Explica brevemente los cambios:\n\n', mode: 'chat' },
+  { name: 'Explicar fácil', hint: 'Como si tuviera 12 años', text: 'Explícame como si tuviera 12 años:\n\n', mode: 'chat' },
+  { name: 'Ideas', hint: 'Lluvia de ideas', text: 'Dame 10 ideas creativas sobre:\n\n', mode: 'chat' },
+  { name: 'Investigar', hint: 'Informe con secciones', text: 'Investiga a fondo y entrégame un informe estructurado sobre:\n\n', mode: 'research' },
+];
+
 /* ---------- Utilidades ---------- */
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -63,7 +74,7 @@ const haptic = (ms = 8) => { try { navigator.vibrate && navigator.vibrate(ms); }
 
 /* ---------- Estado ---------- */
 const settings = Object.assign(
-  { theme: 'auto', selected: [], compare: false, polKey: '', orKey: '' },
+  { theme: 'auto', selected: [], compare: false, polKey: '', orKey: '', web: false, autoFallback: true, imgModel: 'flux', imgSize: '1024x1024' },
   storage.get(STORE_SETTINGS, {})
 );
 const state = {
@@ -410,6 +421,17 @@ function assistantEl(m, mi, isLast) {
   grid.className = 'variants' + (multi ? ' multi' : '');
   m.variants.forEach((v, vi) => grid.appendChild(variantEl(v, vi, mi, multi, isLast)));
   d.appendChild(grid);
+  if (m.sources && m.sources.length) {
+    const src = document.createElement('div');
+    src.className = 'sources';
+    for (const s of m.sources) {
+      if (!/^https?:\/\//.test(s.url || '')) continue;
+      const a = document.createElement('a');
+      a.href = s.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = '🌐 ' + s.title;
+      src.appendChild(a);
+    }
+    d.appendChild(src);
+  }
   const settled = !(state.busy && isLast);
   if (settled && !multi && m.variants[0].content) d.appendChild(actionsEl(mi, isLast));
   else if (settled && !multi && m.variants[0].error && isLast) d.appendChild(actionsEl(mi, true));
@@ -435,9 +457,34 @@ function renderMessages(scrollBottom = false) {
 const nearBottom = () => els.messages.scrollHeight - els.messages.scrollTop - els.messages.clientHeight < 140;
 const scrollToBottom = () => { els.messages.scrollTop = els.messages.scrollHeight; };
 
+/* ---------- Búsqueda web (Wikipedia, sin clave) ---------- */
+async function wikiSearch(lang, query) {
+  const q = new URLSearchParams({
+    action: 'query', generator: 'search', gsrsearch: query, gsrlimit: '3', prop: 'extracts|info', inprop: 'url',
+    exintro: '1', explaintext: '1', exchars: '1100', format: 'json', origin: '*',
+  });
+  const res = await fetch(`https://${lang}.wikipedia.org/w/api.php?${q}`);
+  if (!res.ok) return [];
+  const json = await res.json();
+  const pages = Object.values((json.query && json.query.pages) || {}).sort((a, b) => a.index - b.index);
+  return pages.filter((p) => p.extract).map((p) => ({ title: p.title, url: p.fullurl, text: p.extract }));
+}
+async function webSearch(query) {
+  const clean = query.replace(/\s+/g, ' ').trim().slice(0, 200);
+  if (!clean) return [];
+  try {
+    let hits = await wikiSearch('es', clean);
+    if (hits.length < 2) hits = hits.concat(await wikiSearch('en', clean));
+    const seen = new Set();
+    return hits.filter((h) => (seen.has(h.url) ? false : seen.add(h.url))).slice(0, 3);
+  } catch { return []; }
+}
+
 /* ---------- Llamadas a la IA ---------- */
-function buildHistory(chat, upToIndex) {
-  const sys = SYSTEM_PROMPTS[state.mode] || SYSTEM_PROMPTS.chat;
+function buildHistory(chat, upToIndex, webContext = '') {
+  const today = new Date().toLocaleDateString('es', { dateStyle: 'full' });
+  const sys = (SYSTEM_PROMPTS[state.mode] || SYSTEM_PROMPTS.chat) + `\nFecha de hoy: ${today}.`
+    + (webContext ? `\n\nContexto de la web (úsalo si es relevante y cita el título de la fuente):\n${webContext}` : '');
   const msgs = [];
   let total = 0;
   for (let i = upToIndex - 1; i >= 0; i--) {
@@ -519,6 +566,23 @@ async function streamVariant(v, model, history, signal, bodyEl) {
   }
 }
 
+async function runWithFallback(v, model, history, signal, bodyEl, single) {
+  const tried = [model.key];
+  let cur = model;
+  for (;;) {
+    v.error = null; v.content = ''; v.done = false; v.model = cur.key; v.label = cur.label;
+    await streamVariant(v, cur, history, signal, bodyEl);
+    if (!v.error || v.content || !single || !settings.autoFallback || signal.aborted || tried.length >= 3) return;
+    const usable = (m) => !tried.includes(m.key) && (!PROVIDERS[m.provider].needsKey || settings.orKey);
+    const next = state.models.find((m) => usable(m) && m.provider === cur.provider) || state.models.find(usable);
+    if (!next) return;
+    tried.push(next.key);
+    toast(`Falló ${cur.label}. Probando con ${next.label}…`, 3000);
+    cur = next;
+    setBody(bodyEl, '', true);
+  }
+}
+
 async function generate(chat) {
   const targets = settings.selected.map(modelByKey).filter(Boolean);
   if (!targets.length) { toast('Elige un modelo primero'); return; }
@@ -529,16 +593,26 @@ async function generate(chat) {
     return;
   }
   state.busy = true; setSendState();
-  const msg = { role: 'assistant', variants: targets.map((m) => ({ model: m.key, label: m.label, content: '', error: null, done: false })) };
+  let sources = [];
+  let webContext = '';
+  if (settings.web) {
+    toast('Buscando en la web…', 3000);
+    const last = chat.messages[chat.messages.length - 1];
+    sources = await webSearch(last.display != null ? last.display : last.content);
+    webContext = sources.map((h, i) => `[${i + 1}] ${h.title} (${h.url}): ${h.text}`).join('\n\n');
+    if (!sources.length) toast('Sin resultados web; respondo sin ellos', 2500);
+  }
+  const msg = { role: 'assistant', sources: sources.map((h) => ({ title: h.title, url: h.url })), variants: targets.map((m) => ({ model: m.key, label: m.label, content: '', error: null, done: false })) };
   chat.messages.push(msg);
   const mi = chat.messages.length - 1;
-  const history = buildHistory(chat, mi);
+  const history = buildHistory(chat, mi, webContext);
   renderMessages();
   scrollToBottom();
   const bodies = $$('.msg', els.messages).pop().querySelectorAll('.variant-body');
   const ctrl = new AbortController();
   state.ctrl = ctrl;
-  await Promise.all(msg.variants.map((v, i) => streamVariant(v, targets[i], history, ctrl.signal, bodies[i])));
+  const single = targets.length === 1;
+  await Promise.all(msg.variants.map((v, i) => runWithFallback(v, targets[i], history, ctrl.signal, bodies[i], single)));
   msg.variants.forEach((v) => { delete v.done; });
   state.busy = false; state.ctrl = null; setSendState();
   chat.updated = Date.now();
@@ -550,7 +624,8 @@ function abortGeneration() { if (state.ctrl) state.ctrl.abort(); }
 
 function makeImageUrl(prompt) {
   const seed = Math.floor(Math.random() * 1e9);
-  const q = new URLSearchParams({ model: 'flux', width: '1024', height: '1024', nologo: 'true', seed: String(seed) });
+  const [w, h] = (settings.imgSize || '1024x1024').split('x');
+  const q = new URLSearchParams({ model: settings.imgModel || 'flux', width: w, height: h, nologo: 'true', seed: String(seed) });
   if (settings.polKey) q.set('token', settings.polKey);
   return `${PROVIDERS.pollinations.imageUrl}${encodeURIComponent(prompt)}?${q}`;
 }
@@ -721,12 +796,57 @@ function setMode(mode) {
   state.mode = mode;
   $$('.mode').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
   els.input.placeholder = SUGGESTION_MODES[mode];
+  $('#img-opts').hidden = mode !== 'image';
+}
+
+/* ---------- Plantillas (@) ---------- */
+function renderSkills(filter = '') {
+  const menu = $('#skills-menu');
+  const f = filter.toLowerCase();
+  const items = SKILLS.filter((k) => !f || k.name.toLowerCase().startsWith(f));
+  menu.innerHTML = '';
+  if (!items.length) { menu.hidden = true; return; }
+  for (const k of items) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.setAttribute('role', 'option'); b.dataset.skill = k.name;
+    b.textContent = k.name;
+    const sm = document.createElement('small'); sm.textContent = k.hint;
+    b.appendChild(sm);
+    menu.appendChild(b);
+  }
+  menu.hidden = false;
+}
+function applySkill(name) {
+  const k = SKILLS.find((x) => x.name === name);
+  if (!k) return;
+  els.input.value = k.text; autosize();
+  setMode(k.mode);
+  $('#skills-menu').hidden = true;
+  els.input.focus();
+  els.input.setSelectionRange(els.input.value.length, els.input.value.length);
+}
+function updateWebButton() {
+  const b = $('#btn-web');
+  b.setAttribute('aria-pressed', String(!!settings.web));
+}
+async function loadImageModels() {
+  const sel = $('#img-model');
+  let list = ['flux', 'turbo'];
+  try {
+    const res = await fetch('https://image.pollinations.ai/models');
+    if (res.ok) { const j = await res.json(); if (Array.isArray(j) && j.length) list = j.map((x) => (typeof x === 'string' ? x : x.name)).filter(Boolean); }
+  } catch { /* usamos la lista básica */ }
+  if (!list.includes(settings.imgModel)) list.unshift(settings.imgModel);
+  sel.innerHTML = '';
+  for (const m of list) { const o = document.createElement('option'); o.value = m; o.textContent = m; sel.appendChild(o); }
+  sel.value = settings.imgModel;
 }
 
 /* ---------- Ajustes ---------- */
 function renderSettings() {
   $('#set-pol-key').value = settings.polKey || '';
   $('#set-or-key').value = settings.orKey || '';
+  $('#set-fallback').checked = !!settings.autoFallback;
   $('#ver').textContent = APP_VERSION;
   $('#btn-install').hidden = !state.deferredInstall;
 }
@@ -763,7 +883,23 @@ function bindEvents() {
   $('#btn-attach').addEventListener('click', () => els.file.click());
   els.file.addEventListener('change', () => { onFiles([...els.file.files]); els.file.value = ''; });
   els.send.addEventListener('click', onSend);
-  els.input.addEventListener('input', autosize);
+  els.input.addEventListener('input', () => {
+    autosize();
+    const m = /^@(\S*)$/.exec(els.input.value);
+    if (m) renderSkills(m[1]); else $('#skills-menu').hidden = true;
+  });
+  $('#btn-skills').addEventListener('click', () => {
+    const menu = $('#skills-menu');
+    if (menu.hidden) renderSkills(); else menu.hidden = true;
+  });
+  $('#skills-menu').addEventListener('click', (e) => { const b = e.target.closest('[data-skill]'); if (b) applySkill(b.dataset.skill); });
+  $('#btn-web').addEventListener('click', () => {
+    settings.web = !settings.web; saveSettings(); updateWebButton();
+    toast(settings.web ? 'Búsqueda web activada (Wikipedia)' : 'Búsqueda web desactivada');
+  });
+  $('#img-model').addEventListener('change', (e) => { settings.imgModel = e.target.value; saveSettings(); });
+  $('#img-size').addEventListener('change', (e) => { settings.imgSize = e.target.value; saveSettings(); });
+  $('#set-fallback').addEventListener('change', (e) => { settings.autoFallback = e.target.checked; saveSettings(); });
   els.input.addEventListener('keydown', (e) => {
     const touch = matchMedia('(pointer: coarse)').matches;
     if (e.key === 'Enter' && !e.shiftKey && !touch && !e.isComposing) { e.preventDefault(); onSend(); }
@@ -861,6 +997,9 @@ function init() {
   bindEvents();
   setSendState();
   setMode('chat');
+  $('#img-size').value = settings.imgSize;
+  updateWebButton();
+  loadImageModels();
   renderChatList();
   renderMessages();
   loadModels();

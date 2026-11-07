@@ -177,6 +177,16 @@ textarea::placeholder { color: var(--muted); }
 .att-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
 .att-chip button { width: 32px; height: 32px; display: grid; place-items: center; color: var(--muted); }
 
+.icon-btn.tog[aria-pressed="true"] { color: var(--accent); background: var(--surface-2); }
+.skills-menu { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-m); box-shadow: var(--shadow); margin-bottom: var(--s2); max-height: 38dvh; overflow-y: auto; padding: var(--s1); }
+.skills-menu button { display: block; width: 100%; text-align: left; min-height: 44px; padding: var(--s2) var(--s3); border-radius: var(--r-s); font-size: 15px; }
+.skills-menu button:hover, .skills-menu button:active { background: var(--surface-2); }
+.skills-menu small { display: block; color: var(--muted); font-size: 12px; }
+.img-opts { display: flex; gap: var(--s3); flex-wrap: wrap; margin-bottom: var(--s2); font-size: 13px; color: var(--muted); }
+.img-opts select { min-height: 36px; margin-left: 4px; border-radius: var(--r-s); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 16px; padding: 0 var(--s2); }
+.sources { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s2); }
+.sources a { display: inline-flex; align-items: center; min-height: 32px; padding: 0 var(--s3); border-radius: 999px; background: var(--surface); border: 1px solid var(--border); font-size: 12px; color: var(--accent); text-decoration: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* ===== Hojas inferiores ===== */
 .sheet-wrap { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
 .sheet-bg { position: absolute; inset: 0; background: rgba(0, 0, 0, .55); animation: fade .2s both; }
