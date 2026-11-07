@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>FreeIA – Chat con IA gratis</title>
+<meta name="description" content="Chat de IA gratis con todos los modelos gratuitos, imágenes y comparación de respuestas.">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0f0b1e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FreeIA">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+    <symbol id="i-clip" viewBox="0 0 24 24"><path d="m21 12-8.6 8.6a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8L15 6.6"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></symbol>
+  </defs>
+</svg>
+
+<div class="app" id="app">
+  <aside class="sidebar" id="sidebar" aria-label="Historial">
+    <div class="sidebar-head">
+      <div class="brand"><span class="logo" aria-hidden="true"></span>FreeIA</div>
+      <button class="icon-btn only-mobile" id="btn-close-side" aria-label="Cerrar menú"><svg class="ic"><use href="#i-x"/></svg></button>
+    </div>
+    <button class="btn primary block" id="btn-new"><svg class="ic"><use href="#i-plus"/></svg>Nuevo chat</button>
+    <div class="chat-list" id="chat-list" role="list"></div>
+    <button class="btn ghost block" id="btn-settings"><svg class="ic"><use href="#i-gear"/></svg>Ajustes</button>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <section class="main">
+    <header class="topbar">
+      <button class="icon-btn only-mobile" id="btn-menu" aria-label="Abrir menú"><svg class="ic"><use href="#i-menu"/></svg></button>
+      <button class="model-chip" id="btn-model" aria-label="Elegir modelo">
+        <span class="dot"></span><span id="model-label">Cargando…</span><svg class="ic sm"><use href="#i-chev"/></svg>
+      </button>
+      <span class="spacer"></span>
+      <button class="icon-btn" id="btn-theme" aria-label="Cambiar tema"><svg class="ic"><use href="#i-sun"/></svg></button>
+    </header>
+
+    <main class="messages" id="messages" aria-live="polite">
+      <div class="empty" id="empty">
+        <h1>IA <em>gratis</em> con<br>cualquier modelo</h1>
+        <p>Sin registro. Escribe, genera imágenes, sube documentos y compara respuestas.</p>
+        <div class="chips">
+          <button class="chip" data-prompt="Resume en cinco puntos clave el siguiente texto:">Resumir un texto</button>
+          <button class="chip" data-prompt="Explícame la computación cuántica como si tuviera 12 años.">Explícame algo</button>
+          <button class="chip" data-prompt="Escribe un correo profesional para pedir una reunión con mi jefe.">Redactar un correo</button>
+          <button class="chip" data-prompt="Dame un plan de estudio de 4 semanas para aprender inglés.">Plan de estudio</button>
+        </div>
+      </div>
+    </main>
+
+    <footer class="composer">
+      <div class="attachments" id="attachments"></div>
+      <div class="box">
+        <textarea id="input" rows="1" placeholder="Escribe tu mensaje…" aria-label="Mensaje" enterkeyhint="send"></textarea>
+        <div class="row">
+          <div class="modes" id="modes" role="tablist">
+            <button class="mode active" data-mode="chat" role="tab">Chat</button>
+            <button class="mode" data-mode="write" role="tab">Escribir</button>
+            <button class="mode" data-mode="research" role="tab">Investigar</button>
+            <button class="mode" data-mode="image" role="tab">Imagen</button>
+          </div>
+          <span class="spacer"></span>
+          <button class="icon-btn" id="btn-attach" aria-label="Adjuntar archivo de texto"><svg class="ic"><use href="#i-clip"/></svg></button>
+          <button class="send" id="btn-send" aria-label="Enviar"><svg class="ic"><use href="#i-send"/></svg></button>
+        </div>
+      </div>
+      <input type="file" id="file" hidden multiple accept=".txt,.md,.csv,.json,.js,.ts,.py,.html,.css,.xml,.yml,.yaml,.log,.sql,.java,.c,.cpp,.cs,.go,.rs,.php,.sh,text/*">
+    </footer>
+  </section>
+</div>
+
+<!-- Selector de modelo -->
+<div class="sheet-wrap" id="sheet-model" hidden>
+  <div class="sheet-bg" data-close></div>
+  <div class="sheet" role="dialog" aria-label="Modelos">
+    <div class="sheet-grab"></div>
+    <div class="sheet-head">
+      <h2>Modelos gratis</h2>
+      <button class="icon-btn" data-close aria-label="Cerrar"><svg class="ic"><use href="#i-x"/></svg></button>
+    </div>
+    <label class="switch-row"><span>Comparar modelos <small>(hasta 3 a la vez)</small></span>
+      <input type="checkbox" id="chk-compare"><span class="switch"></span></label>
+    <input class="search" id="model-search" type="search" placeholder="Buscar modelo…" aria-label="Buscar modelo">
+    <div class="model-list" id="model-list"></div>
+  </div>
+</div>
+
+<!-- Ajustes -->
+<div class="sheet-wrap" id="sheet-settings" hidden>
+  <div class="sheet-bg" data-close></div>
+  <div class="sheet" role="dialog" aria-label="Ajustes">
+    <div class="sheet-grab"></div>
+    <div class="sheet-head">
+      <h2>Ajustes</h2>
+      <button class="icon-btn" data-close aria-label="Cerrar"><svg class="ic"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="form">
+      <h3>Pollinations <small>sin clave</small></h3>
+      <label class="field"><span>Clave (opcional)</span>
+        <input id="set-pol-key" type="password" autocomplete="off" placeholder="Solo si tu cuenta la requiere"></label>
+
+      <h3>OpenRouter <small>modelos <code>:free</code></small></h3>
+      <label class="field"><span>Clave API gratuita</span>
+        <input id="set-or-key" type="password" autocomplete="off" placeholder="sk-or-v1-…"></label>
+      <p class="hint">Crea una clave gratis en openrouter.ai/keys y pégala aquí. Se guarda solo en este dispositivo y activa decenas de modelos gratuitos.</p>
+
+      <div class="btn-row">
+        <button class="btn primary" id="btn-save-set">Guardar y recargar modelos</button>
+      </div>
+
+      <h3>Datos</h3>
+      <div class="btn-row">
+        <button class="btn" id="btn-install" hidden>Instalar app</button>
+        <button class="btn danger" id="btn-wipe"><svg class="ic sm"><use href="#i-trash"/></svg>Borrar todos los chats</button>
+      </div>
+      <p class="hint">Tus conversaciones se guardan solo en este navegador. Versión <span id="ver"></span>.</p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script src="libs/marked.min.js"></script>
+<script src="libs/purify.min.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
