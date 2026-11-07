@@ -3,7 +3,7 @@
    FreeIA – chat con IA gratis (sin compilación, sin servidor propio)
    ===================================================================== */
 
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 
 /* ---------- Constantes ---------- */
 const STORE_CHATS = 'freeia.chats.v1';
@@ -14,6 +14,9 @@ const MAX_COMPARE = 3;
 const MAX_FILE_CHARS = 120000;
 const MAX_FILES = 3;
 const MAX_HISTORY_CHARS = 60000;
+
+// Función de Supabase que guarda la clave de OpenRouter (solo modelos :free)
+const PROXY_URL = 'https://syyealdlapxmpeccaary.supabase.co/functions/v1/freeia-chat';
 
 const PROVIDERS = {
   pollinations: {
@@ -27,7 +30,7 @@ const PROVIDERS = {
   },
   openrouter: {
     name: 'OpenRouter',
-    note: 'Modelos :free · requiere clave gratuita',
+    note: 'Modelos :free',
     chatUrl: 'https://openrouter.ai/api/v1/chat/completions',
     modelsUrl: 'https://openrouter.ai/api/v1/models',
     needsKey: true,
@@ -231,7 +234,7 @@ function renderModelList() {
     if (!items.length && q) continue;
     const head = document.createElement('div');
     head.className = 'group-title';
-    const keyOk = !cfg.needsKey || !!settings.orKey;
+    const keyOk = !cfg.needsKey || !!settings.orKey || !!PROXY_URL;
     head.innerHTML = `<span></span><span class="badge"></span>`;
     head.firstChild.textContent = `${cfg.name} · ${all.length}`;
     head.lastChild.textContent = keyOk ? cfg.note : 'Falta la clave · ve a Ajustes';
@@ -498,8 +501,13 @@ function buildHistory(chat, upToIndex, webContext = '') {
   return [{ role: 'system', content: sys }, ...msgs];
 }
 
+const usesProxy = (model) => model.provider === 'openrouter' && !settings.orKey;
+const chatUrlFor = (model) => (usesProxy(model) ? PROXY_URL : PROVIDERS[model.provider].chatUrl);
+const providerReady = (model) => !PROVIDERS[model.provider].needsKey || !!settings.orKey || !!PROXY_URL;
+
 function authHeaders(model) {
   const h = { 'Content-Type': 'application/json' };
+  if (usesProxy(model)) return h;
   if (model.provider === 'openrouter') { h.Authorization = `Bearer ${settings.orKey}`; h['X-Title'] = 'FreeIA'; }
   else if (settings.polKey) h.Authorization = `Bearer ${settings.polKey}`;
   return h;
@@ -518,7 +526,7 @@ async function streamVariant(v, model, history, signal, bodyEl) {
     });
   };
   try {
-    const res = await fetch(PROVIDERS[model.provider].chatUrl, {
+    const res = await fetch(chatUrlFor(model), {
       method: 'POST', headers: authHeaders(model), signal,
       body: JSON.stringify({ model: model.id, messages: history, stream: true }),
     });
@@ -573,7 +581,7 @@ async function runWithFallback(v, model, history, signal, bodyEl, single) {
     v.error = null; v.content = ''; v.done = false; v.model = cur.key; v.label = cur.label;
     await streamVariant(v, cur, history, signal, bodyEl);
     if (!v.error || v.content || !single || !settings.autoFallback || signal.aborted || tried.length >= 3) return;
-    const usable = (m) => !tried.includes(m.key) && (!PROVIDERS[m.provider].needsKey || settings.orKey);
+    const usable = (m) => !tried.includes(m.key) && providerReady(m);
     const next = state.models.find((m) => usable(m) && m.provider === cur.provider) || state.models.find(usable);
     if (!next) return;
     tried.push(next.key);
@@ -586,7 +594,7 @@ async function runWithFallback(v, model, history, signal, bodyEl, single) {
 async function generate(chat) {
   const targets = settings.selected.map(modelByKey).filter(Boolean);
   if (!targets.length) { toast('Elige un modelo primero'); return; }
-  const blocked = targets.find((m) => PROVIDERS[m.provider].needsKey && !settings.orKey);
+  const blocked = targets.find((m) => !providerReady(m));
   if (blocked) {
     toast('Ese modelo necesita tu clave gratuita de OpenRouter');
     renderSettings(); openSheet('sheet-settings');
