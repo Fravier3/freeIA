@@ -1,5 +1,5 @@
 /* FreeIA service worker – precache + auto-actualización */
-const CACHE = 'freeia-v1.3.0';
+const CACHE = 'freeia-v1.4.0';
 const PRECACHE = [
   './',
   './index.html',

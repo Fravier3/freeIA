@@ -3,7 +3,7 @@
    FreeIA – chat con IA gratis (sin compilación, sin servidor propio)
    ===================================================================== */
 
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.4.0';
 
 /* ---------- Constantes ---------- */
 const STORE_CHATS = 'freeia.chats.v1';
@@ -152,6 +152,21 @@ function setBody(el, content, streaming) {
 /* ---------- Modelos ---------- */
 const modelByKey = (key) => state.models.find((m) => m.key === key);
 const makeKey = (provider, id) => `${provider}::${id}`;
+const FILLER = /^(instruct|chat|preview|free|latest|beta|it|the|model|exp|experimental|hf|thinking)$/i;
+function shortLabel(name, id, maxTokens = 3) {
+  let n = String(name || '').replace(/\(free\)/ig, '').replace(/^[^:]*:\s*/, '').trim();
+  if (!n) n = prettify(id);
+  const toks = n.replace(/[()]/g, '').split(/[\s_-]+/).filter((t) => t && !FILLER.test(t)).slice(0, maxTokens);
+  let out = '';
+  for (const t of toks) {
+    const low = t.toLowerCase();
+    if (!out) out = low;
+    else if (/^v?[\d.]+[a-z]*$/i.test(t) && !/[\d.]$/.test(out.split(' ').pop())) out += low;
+    else out += ' ' + low;
+  }
+  return out || prettify(id).toLowerCase();
+}
+const vendorOf = (name) => { const m = /^([^:]+):/.exec(String(name || '')); return m ? m[1].trim() : ''; };
 const prettify = (id) => id.replace(/^.*\//, '').replace(/:free$/, '').replace(/[-_]/g, ' ');
 
 async function fetchProviderModels(provider) {
@@ -175,11 +190,18 @@ async function fetchProviderModels(provider) {
     }
     out.push({
       key: makeKey(provider, id), provider, id,
-      label: (provider === 'openrouter' && item.name) ? String(item.name).replace(/\s*\(free\)\s*$/i, '') : prettify(id),
-      desc: typeof item === 'object' ? String(item.description || '').slice(0, 90) : '',
+      label: shortLabel(provider === 'openrouter' ? item.name : '', id),
+      desc: provider === 'openrouter' ? vendorOf(item.name) : '',
     });
   }
   if (!out.length) throw new Error('vacío');
+  const seen = new Map();
+  for (const m of out) {
+    const item = raw.find((r) => (typeof r === 'string' ? r : r.id || r.name) === m.id);
+    if (seen.has(m.label)) m.label = shortLabel(typeof item === 'object' && provider === 'openrouter' ? item.name : '', m.id, 4);
+    if (seen.has(m.label)) m.label += ` ${m.id.slice(-4)}`;
+    seen.set(m.label, true);
+  }
   return out;
 }
 
@@ -866,7 +888,7 @@ function applyTheme() {
   else root.setAttribute('data-theme', settings.theme);
   const dark = settings.theme === 'dark' || (settings.theme === 'auto' && !matchMedia('(prefers-color-scheme: light)').matches);
   const meta = $('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', dark ? '#0f0b1e' : '#f6f4ff');
+  if (meta) meta.setAttribute('content', dark ? '#070d1f' : '#f1f6ff');
 }
 function toggleTheme() {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
